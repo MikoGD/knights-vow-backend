@@ -19,7 +19,8 @@ func handleCreateUser(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(400, gin.H{
-			"error": err,
+			"message": "invalid request payload",
+			"error":   err,
 		})
 		return
 	}
@@ -35,7 +36,9 @@ func handleCreateUser(c *gin.Context) {
 
 	if user != nil {
 		c.JSON(409, gin.H{
-			"error": "user already exists",
+			"error": gin.H{
+				"username": "username already exists",
+			},
 		})
 		return
 	}
@@ -74,7 +77,8 @@ func HandleUserLogin(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(400, gin.H{
-			"error": err,
+			"message": "invalid request payload",
+			"error":   err,
 		})
 		return
 	}
@@ -89,8 +93,8 @@ func HandleUserLogin(c *gin.Context) {
 	}
 
 	if user == nil {
-		c.JSON(404, gin.H{
-			"error": "user not found",
+		c.JSON(401, gin.H{
+			"error": "invalid login or password",
 		})
 		return
 	}
