@@ -24,6 +24,22 @@ func handleCreateUser(c *gin.Context) {
 		return
 	}
 
+	user, err := GetUser(userPayload.Username)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	if user != nil {
+		c.JSON(409, gin.H{
+			"error": "user already exists",
+		})
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userPayload.Password), bcrypt.DefaultCost)
 
 	if err != nil {
