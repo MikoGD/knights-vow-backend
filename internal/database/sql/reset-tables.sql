@@ -1,0 +1,3 @@
+-- sqlite
+DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS Files;
