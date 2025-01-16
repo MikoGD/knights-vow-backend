@@ -7,8 +7,8 @@ import (
 
 	"knights-vow/internal/database"
 	"knights-vow/internal/middleware"
+	"knights-vow/internal/resources/uploads"
 	"knights-vow/internal/resources/users"
-	// "knights-vow/uploads"
 )
 
 func main() {
@@ -24,6 +24,7 @@ func main() {
 	v1 := r.Group("api/v1")
 
 	users.CreateRouterGroup(v1)
+	uploads.CreateRouterGroup(v1)
 
 	r.Run()
 }
