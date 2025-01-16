@@ -13,6 +13,41 @@ import (
 
 var Pool *sql.DB
 
+// Runs the same SQL statement for multiple arguments. For example, multiple inserts.
+func ExecuteSQLStatementWithMultipleArgs(statementFilePath string, args [][]any) []sql.Result {
+	results := make([]sql.Result, len(args))
+
+	tx, err := Pool.Begin()
+
+	if err != nil {
+		tx.Rollback()
+		log.Fatalf("Error beginning transaction: %v", err)
+	}
+
+	content, err := os.ReadFile(statementFilePath)
+	statement := string(content)
+	statement = strings.TrimSpace(statement)
+
+	for i, arg := range args {
+		if err != nil {
+			log.Fatalf("Error reading SQL file: %v", err)
+		}
+
+		result, err := tx.Exec(statement, arg...)
+
+		if err != nil {
+			tx.Rollback()
+			log.Fatalf("Error executing \"%v\" statement: %v", statementFilePath, err)
+		}
+
+		results[i] = result
+	}
+
+	tx.Commit()
+
+	return results
+}
+
 func ExecuteSQLStatement(statementFilePath string, args ...any) sql.Result {
 	content, err := os.ReadFile(statementFilePath)
 
@@ -70,13 +105,20 @@ func ExecuteSQLQuery(queryFilePath string, args ...any) *sql.Rows {
 }
 
 func createTables() {
-	createTableSQL, err := path.CreatePathFromRoot("internal/database/sql/create-user-table.sql")
+	createUsersTableSQL, err := path.CreatePathFromRoot("internal/database/sql/create-users-table.sql")
 
 	if err != nil {
 		log.Fatalf("Error creating path from root: %v", err)
 	}
 
-	ExecuteSQLStatement(createTableSQL)
+	createFilesTableSQL, err := path.CreatePathFromRoot("internal/database/sql/create-files-table.sql")
+
+	if err != nil {
+		log.Fatalf("Error creating path from root: %v", err)
+	}
+
+	ExecuteSQLStatement(createUsersTableSQL)
+	ExecuteSQLStatement(createFilesTableSQL)
 }
 
 func InitDatabase() {
