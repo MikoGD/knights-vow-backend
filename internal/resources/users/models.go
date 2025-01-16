@@ -18,7 +18,7 @@ type User struct {
 
 // Save the user to the database.
 func SaveUser(username string, password string) (int, error) {
-	filePath, err := path.CreatePathFromRoot("internal/users/sql/create-user.sql")
+	filePath, err := path.CreatePathFromRoot("internal/resources/users/sql/create-user.sql")
 
 	if err != nil {
 		return -1, err
@@ -36,14 +36,47 @@ func SaveUser(username string, password string) (int, error) {
 }
 
 // Gets a user from the database by username. Returns nil, nil if the user does not exist.
-func GetUser(username string) (*User, error) {
-	filePath, err := path.CreatePathFromRoot("internal/users/sql/get-user.sql")
+func GetUserByUsername(username string) (*User, error) {
+	filePath, err := path.CreatePathFromRoot("internal/resources/users/sql/get-user-by-username.sql")
 
 	if err != nil {
 		return nil, err
 	}
 
 	rows := database.ExecuteSQLQuery(filePath, username)
+
+	defer rows.Close()
+
+	hasRow := rows.Next()
+
+	if !hasRow && rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	if !hasRow {
+		return nil, nil
+	}
+
+	user := &User{}
+
+	err = rows.Scan(&user.ID, &user.Username, &user.Password)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// Gets a user from the database by username. Returns nil, nil if the user does not exist.
+func GetUserByID(userID int) (*User, error) {
+	filePath, err := path.CreatePathFromRoot("internal/resources/users/sql/get-user-by-id.sql")
+
+	if err != nil {
+		return nil, err
+	}
+
+	rows := database.ExecuteSQLQuery(filePath, userID)
 
 	defer rows.Close()
 

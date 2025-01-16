@@ -25,7 +25,7 @@ func handleCreateUser(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(userPayload.Username)
+	user, err := GetUserByUsername(userPayload.Username)
 
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -83,7 +83,7 @@ func HandleUserLogin(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(userPayload.Username)
+	user, err := GetUserByUsername(userPayload.Username)
 
 	if err != nil {
 		c.JSON(500, gin.H{
