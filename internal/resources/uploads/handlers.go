@@ -70,3 +70,21 @@ func HandleFilesUpload(c *gin.Context) {
 		"filesUploaded": filesUploaded,
 	})
 }
+
+func HandleGetAllFiles(c *gin.Context) {
+	files, err := GetAllFiles()
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "error getting files",
+			"error":   err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "files retrieved",
+		"count":   len(files),
+		"files":   files,
+	})
+}

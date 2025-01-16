@@ -9,5 +9,6 @@ func CreateRouterGroup(r *gin.RouterGroup) {
 
 	{
 		uploads.POST("/", HandleFilesUpload)
+		uploads.GET("/", HandleGetAllFiles)
 	}
 }
