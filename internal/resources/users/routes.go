@@ -10,5 +10,6 @@ func CreateRouterGroup(r *gin.RouterGroup) {
 	{
 		users.POST("/sign-up", handleCreateUser)
 		users.POST("/login", HandleUserLogin)
+		users.GET("/:id/auth-status", CheckUserAuthStatus)
 	}
 }

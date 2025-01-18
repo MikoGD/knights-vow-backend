@@ -8,13 +8,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func CreateJWT() string {
+func CreateJWT(userID int) string {
 	expirationDate := time.Now().Add(24 * time.Hour).UnixMilli()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"iss": "knights-vow",
-		"sub": "access",
-		"aud": "knights-vow-client",
-		"exp": expirationDate,
+		"iss":       "knights-vow",
+		"sub":       "access",
+		"aud":       "knights-vow-client",
+		"exp":       expirationDate,
+		"client_id": userID,
 	})
 
 	tokenString, err := token.SignedString([]byte("secret"))
