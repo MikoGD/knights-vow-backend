@@ -12,10 +12,11 @@ import (
 )
 
 type File struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	CreatedDate string `json:"created_date"`
-	Owner       string `json:"owner"`
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	CreatedDate   string `json:"createdDate"`
+	OwnerID       string `json:"ownerID"`
+	OwnerUsername string `json:"ownerUsername"`
 }
 
 func createArgs(args ...any) []any {
@@ -86,7 +87,7 @@ func GetAllFiles() ([]File, error) {
 	for rows.Next() {
 		file := File{}
 
-		rows.Scan(&file.ID, &file.Owner, &file.Name, &file.CreatedDate)
+		rows.Scan(&file.ID, &file.OwnerID, &file.Name, &file.CreatedDate, &file.OwnerUsername)
 		files[i] = file
 		i++
 	}
