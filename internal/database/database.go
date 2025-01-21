@@ -24,12 +24,25 @@ func ExecuteSQLStatementWithMultipleArgs(statementFilePath string, args [][]any)
 		log.Fatalf("Error beginning transaction: %v", err)
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			log.Fatalf("Recovered from panic: %v", r)
+		} else if err != nil {
+			tx.Rollback()
+			log.Fatalf("Error executing \"%v\" statement: %v", statementFilePath, err)
+		} else {
+			tx.Commit()
+		}
+	}()
+
 	content, err := os.ReadFile(statementFilePath)
 	statement := string(content)
 	statement = strings.TrimSpace(statement)
 
 	for i, arg := range args {
 		if err != nil {
+			tx.Rollback()
 			log.Fatalf("Error reading SQL file: %v", err)
 		}
 
@@ -42,8 +55,6 @@ func ExecuteSQLStatementWithMultipleArgs(statementFilePath string, args [][]any)
 
 		results[i] = result
 	}
-
-	tx.Commit()
 
 	return results
 }
