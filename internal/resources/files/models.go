@@ -6,7 +6,6 @@ import (
 
 	"knights-vow/internal/database"
 	"knights-vow/internal/resources/users"
-	"knights-vow/pkg/path"
 )
 
 type File struct {
@@ -90,7 +89,7 @@ func GetAllFiles() ([]File, error) {
 		return nil, err
 	}
 
-	getAllFilesQuery, err := path.CreatePathFromRoot(pathFromRoot + "/select-all-files.sql")
+	getAllFilesQuery, err := database.GetQuery(pathFromRoot + "/select-all-files.sql")
 	if err != nil {
 		return nil, err
 	}
