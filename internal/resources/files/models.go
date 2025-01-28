@@ -122,33 +122,27 @@ func GetAllFiles() ([]File, error) {
 	return files, nil
 }
 
-func GetFileByID(fileID int) (File, error) {
-	file := File{
-		ID:            -1,
-		Name:          "",
-		CreatedDate:   "",
-		OwnerID:       -1,
-		OwnerUsername: "",
-	}
+func GetFileByID(fileID int) (*File, error) {
+	file := &File{}
 
 	selectFileByIDQuery, err := database.GetQuery(pathFromRoot + "/select-file-by-id.sql")
 	if err != nil {
-		return file, err
+		return nil, err
 	}
 
 	rows, err := database.Pool.Query(selectFileByIDQuery, fileID)
 	if err != nil {
-		return file, err
+		return nil, err
 	}
 
 	if !rows.Next() {
-		return file, nil
+		return nil, nil
 	}
 
 	err = rows.Scan(&file.ID, &file.Name, &file.CreatedDate, &file.OwnerID, &file.OwnerUsername)
 	if err != nil {
 		database.CloseRows(rows)
-		return file, err
+		return nil, err
 	}
 
 	database.CloseRows(rows)
