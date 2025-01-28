@@ -8,9 +8,8 @@ func CreateRouterGroup(r *gin.RouterGroup) {
 	files := r.Group("/files")
 
 	{
-		files.POST("", HandleFilesUpload)
 		files.GET("", HandleGetAllFiles)
-		files.GET("/:fileName", HandleFilesDownload)
-		files.HEAD("/:fileName", HandleFilesSize)
+		files.GET("/upload", HandleFileUpload)
+		files.GET("/:fileID", HandleFileDownload)
 	}
 }

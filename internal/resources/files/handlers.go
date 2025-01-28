@@ -1,77 +1,25 @@
 package files
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"knights-vow/pkg/path"
+	"knights-vow/pkg/sockets"
+	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
-func HandleFilesUpload(c *gin.Context) {
-	form, err := c.MultipartForm()
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error parsing form",
-			"error":   err,
-		})
-		return
-	}
-
-	files := form.File["files"]
-	username := form.Value["username"]
-
-	if len(username) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "username not provided",
-		})
-		return
-	}
-
-	uploadsFilePath, err := path.CreatePathFromRoot("data/uploads")
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error creating uploads directory",
-			"error":   err,
-		})
-		return
-	}
-
-	fileNames := make([]string, len(files))
-
-	for i, file := range files {
-		err = c.SaveUploadedFile(file, filepath.Join(uploadsFilePath, file.Filename))
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": "error saving file",
-				"error":   err,
-			})
-			return
-		}
-
-		fileNames[i] = file.Filename
-	}
-
-	filesUploaded, err := SaveFiles(fileNames, username[0])
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error saving file to database",
-			"error":   err,
-		})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message":       "file(s) uploaded",
-		"filesUploaded": filesUploaded,
-	})
-}
+const (
+	PathToTempDirectory = "data/temp"
+	PathToUploads       = "data/uploads"
+	ChunkSize           = 1024 * 1024
+)
 
 func HandleGetAllFiles(c *gin.Context) {
 	files, err := GetAllFiles()
@@ -91,83 +39,147 @@ func HandleGetAllFiles(c *gin.Context) {
 	})
 }
 
-func HandleFilesDownload(c *gin.Context) {
-	fileName := c.Param("fileName")
-
-	filePath, err := path.CreatePathFromRoot("data/uploads/" + fileName)
+func HandleFileUpload(c *gin.Context) {
+	ws, err := sockets.Upgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error getting file path",
+			"message": "error upgrading connection",
 			"error":   err,
 		})
-		return
 	}
 
-	file, err := os.Open(filePath)
+	_, payload, err := ws.ReadMessage()
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error opening file",
-			"error":   err,
-		})
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error reading message")
 		return
 	}
 
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-
+	var initMessage FileUploadInitMessage
+	err = json.Unmarshal(payload, &initMessage)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error getting file info",
-			"error":   err,
-		})
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error unmarshalling message")
 		return
 	}
 
-	c.Writer.Header().Set("Content-Disposition", "attachment; filename=\""+fileName+"\"")
-	c.Writer.Header().Set("Content-Type", "application/octet-stream")
-	c.Writer.Header().Set("Content-Length", strconv.Itoa(int(fileInfo.Size())))
+	tempDir, err := CreateTempDir(initMessage.UserID, initMessage.FileName)
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error creating temp directory")
+		return
+	}
 
-	http.ServeContent(c.Writer, c.Request, fileName, fileInfo.ModTime(), file)
+	chunksCount := 0
+	for i := 1; i <= initMessage.TotalChunks; i++ {
+		_, payload, err = ws.ReadMessage()
+		if err != nil {
+			sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error reading message")
+			return
+		}
+
+		SaveChunk(tempDir, i, payload)
+
+		chunksCount++
+	}
+
+	finalFilePath, err := path.CreatePathFromRoot("data/uploads/" + initMessage.FileName)
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error creating final file path")
+		return
+	}
+
+	err = MergeChunks(tempDir, finalFilePath, initMessage.TotalChunks)
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error merging chunks")
+		return
+	}
+
+	err = os.RemoveAll(tempDir)
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error removing temp directory")
+		return
+	}
+
+	_, err = SaveFiles([]string{initMessage.FileName}, initMessage.UserID)
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error saving file to database")
+		return
+	}
+
+	sockets.CloseWebSocket(ws, websocket.CloseNormalClosure, "file uploaded")
 }
 
-func HandleFilesSize(c *gin.Context) {
-	fileName := c.Param("fileName")
+func HandleFileDownload(c *gin.Context) {
+	fileIDParam := c.Param("fileID")
 
-	filePath, err := path.CreatePathFromRoot("data/uploads/" + fileName)
-
+	ws, err := sockets.Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error getting file path",
+			"message": "error upgrading connection",
 			"error":   err,
 		})
 		return
 	}
 
-	file, err := os.Open(filePath)
-
+	fileID, err := strconv.Atoi(fileIDParam)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error opening file",
-			"error":   err,
-		})
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error converting fileID to int")
+		return
+	}
+
+	fileRecord, err := GetFileByID(fileID)
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error getting file record")
+		return
+	}
+
+	uploadsDir, err := path.CreatePathFromRoot("data/uploads")
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error creating uploads directory path")
+		return
+	}
+
+	file, err := os.Open(fmt.Sprintf("%s/%s", uploadsDir, fileRecord.Name))
+	if err != nil {
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error opening file")
 		return
 	}
 
 	defer file.Close()
 
-	fileInfo, err := file.Stat()
-
+	stats, err := file.Stat()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "error getting file info",
-			"error":   err,
-		})
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error getting file stats")
 		return
 	}
 
-	c.Writer.Header().Set("Content-Length", strconv.Itoa(int(fileInfo.Size())))
-	c.Status(http.StatusOK)
+	totalChunks := (stats.Size() + ChunkSize - 1) / ChunkSize
+
+	err = ws.WriteJSON(map[string]any{
+		"fileName":    file.Name(),
+		"totalChunks": totalChunks,
+	})
+	if err != nil {
+		log.Println(err)
+		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error sending file info")
+		return
+	}
+
+	buffer := make([]byte, ChunkSize)
+	for {
+		n, err := file.Read(buffer)
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+		}
+
+		err = ws.WriteMessage(websocket.BinaryMessage, buffer[:n])
+		if err != nil {
+			sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error sending file")
+		}
+	}
+
+	sockets.CloseWebSocket(ws, websocket.CloseNormalClosure, "file sent")
 }
