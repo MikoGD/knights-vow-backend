@@ -11,125 +11,41 @@ import (
 	"knights-vow/pkg/path"
 )
 
+const {
+	pathFromRoot = "internal/database/sql"
+}
+
 var Pool *sql.DB
 
-// Runs the same SQL statement for multiple arguments. For example, multiple inserts.
-func ExecuteSQLStatementWithMultipleArgs(statementFilePath string, args [][]any) []sql.Result {
-	results := make([]sql.Result, len(args))
-
-	tx, err := Pool.Begin()
-
-	if err != nil {
-		tx.Rollback()
-		log.Fatalf("Error beginning transaction: %v", err)
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			log.Fatalf("Recovered from panic: %v", r)
-		} else if err != nil {
-			tx.Rollback()
-			log.Fatalf("Error executing \"%v\" statement: %v", statementFilePath, err)
-		} else {
-			tx.Commit()
-		}
-	}()
-
-	content, err := os.ReadFile(statementFilePath)
-	statement := string(content)
-	statement = strings.TrimSpace(statement)
-
-	for i, arg := range args {
-		if err != nil {
-			tx.Rollback()
-			log.Fatalf("Error reading SQL file: %v", err)
-		}
-
-		result, err := tx.Exec(statement, arg...)
-
-		if err != nil {
-			tx.Rollback()
-			log.Fatalf("Error executing \"%v\" statement: %v", statementFilePath, err)
-		}
-
-		results[i] = result
-	}
-
-	return results
-}
-
-func ExecuteSQLStatement(statementFilePath string, args ...any) sql.Result {
-	content, err := os.ReadFile(statementFilePath)
-
-	if err != nil {
-		log.Fatalf("Error reading SQL file: %v", err)
-	}
-
-	statement := string(content)
-
-	statement = strings.TrimSpace(statement)
-
-	tx, err := Pool.Begin()
-
-	if err != nil {
-		tx.Rollback()
-		log.Fatalf("Error beginning transaction: %v", err)
-	}
-
-	result, err := tx.Exec(statement, args...)
-
-	if err != nil {
-		tx.Rollback()
-		log.Fatalf("Error executing \"%v\" statement: %v", statementFilePath, err)
-	}
-
-	tx.Commit()
-
-	return result
-}
-
-func ExecuteSQLQuery(queryFilePath string, args ...any) *sql.Rows {
-	content, err := os.ReadFile(queryFilePath)
-
-	if err != nil {
-		log.Fatalf("Error reading SQL file: %v", err)
-	}
-
-	query := strings.TrimSpace(string(content))
-
-	stmt, err := Pool.Prepare(query)
-
-	if err != nil {
-		log.Fatalf("Error preparing \"%v\" query: %v", queryFilePath, err)
-	}
-
-	defer stmt.Close()
-
-	rows, err := stmt.Query(args...)
-
-	if err != nil {
-		log.Fatalf("Error executing \"%v\" query: %v", queryFilePath, err)
-	}
-
-	return rows
-}
-
 func createTables() {
-	createUsersTableSQL, err := path.CreatePathFromRoot("internal/database/sql/create-users-table.sql")
-
+	createUsersTableQuery, err := GetQuery(pathFromRoot + "/create-users-table.sql")
 	if err != nil {
-		log.Fatalf("Error creating path from root: %v", err)
+		log.Fatalf("Error getting query: %v", err)
 	}
 
-	createFilesTableSQL, err := path.CreatePathFromRoot("internal/database/sql/create-files-table.sql")
-
+	createFilesTableQuery, err := GetQuery(pathFromRoot + "/create-files-table.sql")
 	if err != nil {
-		log.Fatalf("Error creating path from root: %v", err)
+		log.Fatalf("Error getting query: %v", err)
 	}
 
-	ExecuteSQLStatement(createUsersTableSQL)
-	ExecuteSQLStatement(createFilesTableSQL)
+	tx, err := Pool.Begin()
+	if err != nil {
+		log.Fatalf("Error beginning transaction: %v", err)
+	}
+
+	_, err = tx.Exec(createUsersTableQuery)
+	if err != nil {
+		RollbackTx(tx)
+		log.Fatalf("Error creating users table: %v", err)
+	}
+
+	_, err = tx.Exec(createFilesTableQuery)
+	if err != nil {
+		RollbackTx(tx)
+		log.Fatalf("Error creating files table: %v", err)
+	}
+
+	CommitTx(tx)
 }
 
 func InitDatabase() {
@@ -152,4 +68,47 @@ func InitDatabase() {
 
 func CloseDatabase() {
 	Pool.Close()
+}
+
+// pathFromRoot is the relative path from the root, root is pre-prended in the function
+func GetQuery(pathFromRoot string) (string, error) {
+	queryFilePath, err := path.CreatePathFromRoot(pathFromRoot)
+	if err != nil {
+		return "", err
+	}
+
+	content, err := os.ReadFile(queryFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
+}
+
+func CloseRows(rows *sql.Rows) {
+	err := rows.Close()
+	if err != nil {
+		log.Printf("Error closing rows: %v", err)
+	}
+}
+
+func CloseStmt(stmt *sql.Stmt) {
+	err := stmt.Close()
+	if err != nil {
+		log.Printf("Error closing statement: %v", err)
+	}
+}
+
+func CommitTx(tx *sql.Tx) {
+	err := tx.Commit()
+	if err != nil {
+		log.Printf("Error closing transaction: %v", err)
+	}
+}
+
+func RollbackTx(tx *sql.Tx) {
+	err := tx.Rollback()
+	if err != nil {
+		log.Printf("Error rolling back transaction: %v", err)
+	}
 }
