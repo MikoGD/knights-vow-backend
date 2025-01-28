@@ -4,16 +4,15 @@ import (
 	"database/sql"
 	"log"
 	"os"
-	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 
 	"knights-vow/pkg/path"
 )
 
-const {
+const (
 	pathFromRoot = "internal/database/sql"
-}
+)
 
 var Pool *sql.DB
 
