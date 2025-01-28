@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -156,7 +157,7 @@ func HandleFileDownload(c *gin.Context) {
 	totalChunks := (stats.Size() + ChunkSize - 1) / ChunkSize
 
 	err = ws.WriteJSON(map[string]any{
-		"fileName":    file.Name(),
+		"fileName":    filepath.Base(file.Name()),
 		"totalChunks": totalChunks,
 	})
 	if err != nil {
