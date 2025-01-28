@@ -128,7 +128,6 @@ func CheckUserAuthStatus(c *gin.Context) {
 	}
 
 	tokenString := c.GetHeader("Authorization")
-
 	if tokenString == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"message": "Authorization header missing",
