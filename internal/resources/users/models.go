@@ -50,7 +50,7 @@ func SaveUser(username string, password string) (int, error) {
 
 // Gets a user from the database by username. Returns nil, nil if the user does not exist.
 func GetUserByUsername(username string) (*User, error) {
-	selectUserByUsernameQuery, err := database.GetQuery(pathFromRoot + "/get-user-by-username.sql")
+	selectUserByUsernameQuery, err := database.GetQuery(pathFromRoot + "/select-user-by-username.sql")
 	if err != nil {
 		return nil, err
 	}
