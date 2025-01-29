@@ -9,12 +9,16 @@ import (
 )
 
 func AuthenticateUser(c *gin.Context) {
-	if c.Request.URL.Path == "/api/v1/users/login" || c.Request.URL.Path == "/api/v1/users/sign-up" {
+	var token string
+
+	if len(c.Request.Header["Upgrade"]) == 1 {
+		token = c.Query("token")
+	} else if c.Request.URL.Path != "/api/v1/users/login" && c.Request.URL.Path != "/api/v1/users/sign-up" {
+		token = c.GetHeader("Authorization")
+	} else {
 		c.Next()
 		return
 	}
-
-	token := c.GetHeader("Authorization")
 
 	if token == "" {
 		c.JSON(401, gin.H{
