@@ -2,6 +2,7 @@ package files
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"knights-vow/internal/database"
@@ -37,7 +38,7 @@ func SaveFiles(fileNames []string, ownerID int) (int, error) {
 
 	addFileQuery, err := database.GetQuery(pathFromRoot + "/insert-file.sql")
 	if err != nil {
-		tx.Rollback()
+		database.RollbackTx(tx)
 		return 0, err
 	}
 
@@ -45,17 +46,14 @@ func SaveFiles(fileNames []string, ownerID int) (int, error) {
 	for _, fileName := range fileNames {
 		_, err = tx.Exec(addFileQuery, fileName, user.ID, time.Now().Format(time.RFC3339))
 		if err != nil {
-			tx.Rollback()
+			database.RollbackTx(tx)
 			return 0, err
 		}
 
 		filesSaved++
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return 0, err
-	}
+	database.CommitTx(tx)
 
 	return filesSaved, nil
 }
@@ -147,4 +145,49 @@ func GetFileByID(fileID int) (*File, error) {
 	database.CloseRows(rows)
 
 	return file, nil
+}
+
+func GetFilesByName(fileName string) ([]File, error) {
+	files := make([]File, 0)
+
+	selectFileByName, err := database.GetQuery(pathFromRoot + "/select-files-by-name.sql")
+	if err != nil {
+		return files, err
+	}
+
+	rows, err := database.Pool.Query(
+		selectFileByName,
+		fmt.Sprintf("%s%%", fileName),
+		fmt.Sprintf("%%%s%%", fileName),
+	)
+
+	if err != nil {
+		return files, err
+	}
+
+	for rows.Next() {
+		file := File{}
+
+		if err := rows.Scan(
+			&file.ID,
+			&file.Name,
+			&file.CreatedDate,
+			&file.OwnerID,
+			&file.OwnerUsername,
+		); err != nil {
+			database.CloseRows(rows)
+			return files, err
+		}
+
+		files = append(files, file)
+	}
+
+	if rows.Err() != nil {
+		database.CloseRows(rows)
+		return files, err
+	}
+
+	database.CloseRows(rows)
+
+	return files, nil
 }
