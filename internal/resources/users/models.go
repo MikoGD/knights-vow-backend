@@ -115,5 +115,7 @@ func GetUserByID(userID int) (*User, error) {
 		return nil, err
 	}
 
+	database.CloseRows(rows)
+
 	return user, nil
 }
