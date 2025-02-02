@@ -22,8 +22,17 @@ const (
 	ChunkSize           = 1024 * 1024
 )
 
-func HandleGetAllFiles(c *gin.Context) {
-	files, err := GetAllFiles()
+func HandleGetFiles(c *gin.Context) {
+	fileName := c.Query("fileName")
+
+	var files []File
+	var err error
+
+	if fileName == "" {
+		files, err = GetAllFiles()
+	} else {
+		files, err = GetFilesByName(fileName)
+	}
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
