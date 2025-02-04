@@ -193,3 +193,53 @@ func HandleFileDownload(c *gin.Context) {
 
 	sockets.CloseWebSocket(ws, websocket.CloseNormalClosure, "file sent")
 }
+
+func HandleDeleteFile(c *gin.Context) {
+	fileID := c.Param("fileID")
+
+	id, err := strconv.Atoi(fileID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "invalid file ID",
+		})
+		return
+	}
+
+	file, err := GetFileByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "error getting file record",
+			"error":   err,
+		})
+		return
+	}
+
+	finalFilePath, err := path.CreatePathFromRoot("data/uploads/" + file.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "error creating final file path",
+			"error":   err,
+		})
+		return
+	}
+
+	err = DeleteFile(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "error deleting file",
+			"error":   err,
+		})
+		return
+	}
+
+	err = os.Remove(finalFilePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "error deleting file from disk",
+			"error":   err,
+		})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

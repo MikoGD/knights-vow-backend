@@ -191,3 +191,17 @@ func GetFilesByName(fileName string) ([]File, error) {
 
 	return files, nil
 }
+
+func DeleteFile(fileID int) error {
+	deleteFileQuery, err := database.GetQuery(pathFromRoot + "/delete-file-by-id.sql")
+	if err != nil {
+		return err
+	}
+
+	_, err = database.Pool.Exec(deleteFileQuery, fileID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

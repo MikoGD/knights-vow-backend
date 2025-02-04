@@ -11,5 +11,6 @@ func CreateRouterGroup(r *gin.RouterGroup) {
 		files.GET("", HandleGetFiles)
 		files.GET("/upload", HandleFileUpload)
 		files.GET("/:fileID", HandleFileDownload)
+		files.DELETE("/:fileID", HandleDeleteFile)
 	}
 }
