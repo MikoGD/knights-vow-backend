@@ -39,6 +39,7 @@ func SaveChunk(tempDir string, chunkNumber int, data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = chunk.Write(data)
 
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"knights-vow/pkg/path"
 	"knights-vow/pkg/sockets"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -87,7 +88,23 @@ func HandleFileUpload(c *gin.Context) {
 			return
 		}
 
-		SaveChunk(tempDir, i, payload)
+		err := SaveChunk(tempDir, i, payload)
+
+		if err != nil {
+			sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error saving chunk")
+		}
+
+		percentageUploaded := math.Round((float64(i) / float64(initMessage.TotalChunks)) * 100)
+
+		err = ws.WriteJSON(gin.H{
+			"message":          "Chunk saved",
+			"chunkNumber":      i,
+			"uploadPercentage": int(percentageUploaded),
+		})
+
+		if err != nil {
+			sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error sending save chunk message")
+		}
 
 		chunksCount++
 	}
