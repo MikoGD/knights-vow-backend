@@ -20,6 +20,7 @@ const (
 )
 
 // Save the user to the database.
+// Returns the user ID of user saved
 func SaveUser(username string, password string) (int, error) {
 	insertUserQuery, err := database.GetQuery(pathFromRoot + "/insert-user.sql")
 	if err != nil {
