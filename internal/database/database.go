@@ -14,9 +14,7 @@ const (
 	pathFromRoot = "internal/database/sql"
 )
 
-var Pool *sql.DB
-
-func createTables() {
+func CreateTables(db *sql.DB) {
 	createUsersTableQuery, err := GetQuery(pathFromRoot + "/create-users-table.sql")
 	if err != nil {
 		log.Fatalf("Error getting query: %v", err)
@@ -27,7 +25,7 @@ func createTables() {
 		log.Fatalf("Error getting query: %v", err)
 	}
 
-	tx, err := Pool.Begin()
+	tx, err := db.Begin()
 	if err != nil {
 		log.Fatalf("Error beginning transaction: %v", err)
 	}
@@ -47,7 +45,7 @@ func createTables() {
 	CommitTx(tx)
 }
 
-func InitDatabase() {
+func InitDatabase() *sql.DB {
 	var err error
 
 	databasePath, err := path.CreatePathFromRoot("/data/databases/knights-vow.db")
@@ -56,17 +54,19 @@ func InitDatabase() {
 		log.Fatalf("Error creating path from root: %v", err)
 	}
 
-	Pool, err = sql.Open("sqlite3", databasePath)
+	db, err := sql.Open("sqlite3", databasePath)
 
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
 
-	createTables()
+	CreateTables(db)
+
+	return db
 }
 
-func CloseDatabase() {
-	Pool.Close()
+func CloseDatabase(db *sql.DB) {
+	db.Close()
 }
 
 // pathFromRoot is the relative path from the root, root is pre-prended in the function
@@ -101,7 +101,7 @@ func CloseStmt(stmt *sql.Stmt) {
 func CommitTx(tx *sql.Tx) {
 	err := tx.Commit()
 	if err != nil {
-		log.Printf("Error closing transaction: %v", err)
+		log.Printf("Error committing transaction: %v", err)
 	}
 }
 
