@@ -9,21 +9,21 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
-  "www.github.com/mikogd/hextech/env"
+	"www.github.com/mikogd/hextech/env"
 
 	"knights-vow/internal/database"
 	"knights-vow/internal/middleware"
-	"knights-vow/internal/resources/files"
+	// "knights-vow/internal/resources/files"
 	"knights-vow/internal/resources/users"
 )
 
 func main() {
-  if err := env.LoadEnv("./.env"); err != nil {
-    log.Fatalf("Failed to load env: %s\n", err)
-  }
+	if err := env.LoadEnv("./.env"); err != nil {
+		log.Fatalf("Failed to load env: %s\n", err)
+	}
 
-	database.InitDatabase()
-	defer database.CloseDatabase()
+	db := database.InitDatabase()
+	defer database.CloseDatabase(db)
 
 	r := gin.Default()
 
@@ -50,8 +50,8 @@ func main() {
 
 	v1 := r.Group("api/v1")
 
-	users.CreateRouterGroup(v1)
-	files.CreateRouterGroup(v1)
+	users.CreateRouterGroup(v1, db)
+	// files.CreateRouterGroup(v1)
 
 	URL := os.Getenv("URL")
 	port := os.Getenv("PORT")
