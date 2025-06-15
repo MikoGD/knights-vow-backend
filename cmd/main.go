@@ -4,24 +4,26 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
+	"www.github.com/mikogd/hextech/env"
 
 	"knights-vow/internal/database"
 	"knights-vow/internal/middleware"
 	"knights-vow/internal/resources/files"
 	"knights-vow/internal/resources/users"
-	"knights-vow/pkg/env"
 )
 
 func main() {
-	database.InitDatabase()
+	if err := env.LoadEnv("./.env"); err != nil {
+		log.Fatalf("Failed to load env: %s\n", err)
+	}
 
-	defer database.CloseDatabase()
+	db := database.InitDatabase()
+	defer database.CloseDatabase(db)
 
 	r := gin.Default()
 
@@ -29,14 +31,14 @@ func main() {
 		log.Fatalf("Failed to load env\n%s", err)
 	}
 
-	allowedOriginsValue := os.Getenv("ALLOWED_ORIGINS")
-	if allowedOriginsValue == "" {
-		log.Fatalln("ALLOWED_ORIGINS not set")
-	}
-	allowedOrigins := strings.Split(allowedOriginsValue, ",")
+	// allowedOriginsValue := os.Getenv("ALLOWED_ORIGINS")
+	// if allowedOriginsValue == "" {
+	// 	log.Fatalln("ALLOWED_ORIGINS not set")
+	// }
+	// allowedOrigins := strings.Split(allowedOriginsValue, ",")
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -48,8 +50,8 @@ func main() {
 
 	v1 := r.Group("api/v1")
 
-	users.CreateRouterGroup(v1)
-	files.CreateRouterGroup(v1)
+	users.CreateRouterGroup(v1, db)
+	files.CreateRouterGroup(v1, db)
 
 	URL := os.Getenv("URL")
 	port := os.Getenv("PORT")

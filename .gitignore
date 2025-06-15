@@ -2,3 +2,5 @@
 data
 go.sum
 .env
+.DS_Store
+main
