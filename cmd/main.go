@@ -13,7 +13,7 @@ import (
 
 	"knights-vow/internal/database"
 	"knights-vow/internal/middleware"
-	// "knights-vow/internal/resources/files"
+	"knights-vow/internal/resources/files"
 	"knights-vow/internal/resources/users"
 )
 
@@ -51,7 +51,7 @@ func main() {
 	v1 := r.Group("api/v1")
 
 	users.CreateRouterGroup(v1, db)
-	// files.CreateRouterGroup(v1)
+	files.CreateRouterGroup(v1, db)
 
 	URL := os.Getenv("URL")
 	port := os.Getenv("PORT")

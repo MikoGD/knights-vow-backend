@@ -1,9 +1,11 @@
 package files
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"knights-vow/internal/resources/users"
 	"knights-vow/pkg/path"
 	"knights-vow/pkg/sockets"
 	"log"
@@ -23,16 +25,16 @@ const (
 	ChunkSize           = 1024 * 1024
 )
 
-func HandleGetFiles(c *gin.Context) {
+func HandleGetFiles(c *gin.Context, db *sql.DB) {
 	fileName := c.Query("fileName")
 
 	var files []File
 	var err error
 
 	if fileName == "" {
-		files, err = GetAllFiles()
+		files, err = GetAllFiles(db)
 	} else {
-		files, err = GetFilesByName(fileName)
+		files, err = GetFilesByName(fileName, db)
 	}
 
 	if err != nil {
@@ -50,7 +52,7 @@ func HandleGetFiles(c *gin.Context) {
 	})
 }
 
-func HandleFileUpload(c *gin.Context) {
+func HandleFileUpload(c *gin.Context, db *sql.DB, usersRepository users.UserRepository) {
 	ws, err := sockets.Upgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {
@@ -127,7 +129,7 @@ func HandleFileUpload(c *gin.Context) {
 		return
 	}
 
-	_, err = SaveFiles([]string{initMessage.FileName}, initMessage.UserID)
+	_, err = SaveFiles([]string{initMessage.FileName}, initMessage.UserID, db, usersRepository)
 	if err != nil {
 		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error saving file to database")
 		return
@@ -136,7 +138,7 @@ func HandleFileUpload(c *gin.Context) {
 	sockets.CloseWebSocket(ws, websocket.CloseNormalClosure, "file uploaded")
 }
 
-func HandleFileDownload(c *gin.Context) {
+func HandleFileDownload(c *gin.Context, db *sql.DB) {
 	fileIDParam := c.Param("fileID")
 
 	ws, err := sockets.Upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -154,7 +156,7 @@ func HandleFileDownload(c *gin.Context) {
 		return
 	}
 
-	fileRecord, err := GetFileByID(fileID)
+	fileRecord, err := GetFileByID(fileID, db)
 	if err != nil {
 		sockets.CloseWebSocket(ws, websocket.CloseInternalServerErr, "error getting file record")
 		return
@@ -211,7 +213,7 @@ func HandleFileDownload(c *gin.Context) {
 	sockets.CloseWebSocket(ws, websocket.CloseNormalClosure, "file sent")
 }
 
-func HandleDeleteFile(c *gin.Context) {
+func HandleDeleteFile(c *gin.Context, db *sql.DB) {
 	fileID := c.Param("fileID")
 
 	id, err := strconv.Atoi(fileID)
@@ -222,7 +224,7 @@ func HandleDeleteFile(c *gin.Context) {
 		return
 	}
 
-	file, err := GetFileByID(id)
+	file, err := GetFileByID(id, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "error getting file record",
@@ -240,7 +242,7 @@ func HandleDeleteFile(c *gin.Context) {
 		return
 	}
 
-	err = DeleteFile(id)
+	err = DeleteFile(id, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "error deleting file",

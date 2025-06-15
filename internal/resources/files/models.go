@@ -1,6 +1,7 @@
 package files
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -21,17 +22,17 @@ const (
 	pathFromRoot = "internal/resources/files/sql"
 )
 
-func SaveFiles(fileNames []string, ownerID int) (int, error) {
+func SaveFiles(fileNames []string, ownerID int, db *sql.DB, userRepository users.UserRepository) (int, error) {
 	if len(fileNames) == 0 {
 		return 0, errors.New("no files to save")
 	}
 
-	user, err := users.GetUserByID(ownerID)
+	user, err := userRepository.GetUserByID(ownerID)
 	if err != nil {
 		return 0, err
 	}
 
-	tx, err := database.Pool.Begin()
+	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
 	}
@@ -58,13 +59,13 @@ func SaveFiles(fileNames []string, ownerID int) (int, error) {
 	return filesSaved, nil
 }
 
-func GetAllFilesCount() (int, error) {
+func GetAllFilesCount(db *sql.DB) (int, error) {
 	getFileCountQuery, err := database.GetQuery(pathFromRoot + "/select-files-count.sql")
 	if err != nil {
 		return 0, err
 	}
 
-	rows, err := database.Pool.Query(getFileCountQuery)
+	rows, err := db.Query(getFileCountQuery)
 	if err != nil {
 		return 0, err
 	}
@@ -81,8 +82,8 @@ func GetAllFilesCount() (int, error) {
 	return filesCount, nil
 }
 
-func GetAllFiles() ([]File, error) {
-	filesCount, err := GetAllFilesCount()
+func GetAllFiles(db *sql.DB) ([]File, error) {
+	filesCount, err := GetAllFilesCount(db)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func GetAllFiles() ([]File, error) {
 		return nil, err
 	}
 
-	stmt, err := database.Pool.Prepare(getAllFilesQuery)
+	stmt, err := db.Prepare(getAllFilesQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ func GetAllFiles() ([]File, error) {
 	return files, nil
 }
 
-func GetFileByID(fileID int) (*File, error) {
+func GetFileByID(fileID int, db *sql.DB) (*File, error) {
 	file := &File{}
 
 	selectFileByIDQuery, err := database.GetQuery(pathFromRoot + "/select-file-by-id.sql")
@@ -127,7 +128,7 @@ func GetFileByID(fileID int) (*File, error) {
 		return nil, err
 	}
 
-	rows, err := database.Pool.Query(selectFileByIDQuery, fileID)
+	rows, err := db.Query(selectFileByIDQuery, fileID)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func GetFileByID(fileID int) (*File, error) {
 	return file, nil
 }
 
-func GetFilesByName(fileName string) ([]File, error) {
+func GetFilesByName(fileName string, db *sql.DB) ([]File, error) {
 	files := make([]File, 0)
 
 	selectFileByName, err := database.GetQuery(pathFromRoot + "/select-files-by-name.sql")
@@ -155,7 +156,7 @@ func GetFilesByName(fileName string) ([]File, error) {
 		return files, err
 	}
 
-	rows, err := database.Pool.Query(
+	rows, err := db.Query(
 		selectFileByName,
 		fmt.Sprintf("%s%%", fileName),
 		fmt.Sprintf("%%%s%%", fileName),
@@ -192,13 +193,13 @@ func GetFilesByName(fileName string) ([]File, error) {
 	return files, nil
 }
 
-func DeleteFile(fileID int) error {
+func DeleteFile(fileID int, db *sql.DB) error {
 	deleteFileQuery, err := database.GetQuery(pathFromRoot + "/delete-file-by-id.sql")
 	if err != nil {
 		return err
 	}
 
-	_, err = database.Pool.Exec(deleteFileQuery, fileID)
+	_, err = db.Exec(deleteFileQuery, fileID)
 	if err != nil {
 		return err
 	}
