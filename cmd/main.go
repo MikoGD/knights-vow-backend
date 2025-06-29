@@ -9,7 +9,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
-	"www.github.com/mikogd/hextech/env"
+	"github.com/mikogd/hextech/env"
 
 	"knights-vow/internal/database"
 	"knights-vow/internal/middleware"
