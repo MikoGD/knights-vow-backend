@@ -32,10 +32,12 @@ func handleCreateUser(c *gin.Context, userService UserService) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, &createUserResponse{
-		message: "Successfully created user",
-		token:   myjwt.CreateJWT(userID),
-	})
+	response := createUserResponse{
+		Message: "Successfully created user",
+		Token:   myjwt.CreateJWT(userID),
+	}
+
+	c.JSON(http.StatusCreated, response)
 }
 
 func HandleUserLogin(c *gin.Context, userService UserService) {
@@ -50,10 +52,12 @@ func HandleUserLogin(c *gin.Context, userService UserService) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Successfully logged in user",
-		"token":   token,
-	})
+	response := loginUserResponse{
+		Message: "Successfully logged in user",
+		Token:   token,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func CheckUserAuthStatus(c *gin.Context, userService UserService) {
@@ -84,9 +88,13 @@ func CheckUserAuthStatus(c *gin.Context, userService UserService) {
 	}
 
 	if isAuthenticated {
-		c.Status(http.StatusOK)
+		c.JSON(http.StatusOK, authStatusResponse{
+			IsAuthenticated: true,
+		})
 		return
 	}
 
-	c.Status(http.StatusUnauthorized)
+	c.JSON(http.StatusUnauthorized, authStatusResponse{
+		IsAuthenticated: false,
+	})
 }
