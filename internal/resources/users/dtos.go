@@ -6,6 +6,12 @@ type userDTO struct {
 }
 
 type createUserResponse struct {
-	message string
-	token   string
+	Message string `json:"name"`
+	Token   string `json:"token"`
+}
+
+type loginUserResponse = createUserResponse
+
+type authStatusResponse struct {
+	IsAuthenticated bool `json:"isAuthenticated"`
 }

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ func AuthenticateUser(c *gin.Context) {
 	}
 
 	if token == "" {
+		log.Printf("Failed to get token when accessing path: %s\n", c.Request.URL.Path)
 		c.JSON(401, gin.H{
 			"error": "Authorization header missing",
 		})

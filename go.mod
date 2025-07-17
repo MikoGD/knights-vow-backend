@@ -8,9 +8,9 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/mattn/go-sqlite3 v1.14.24
+	github.com/mikogd/hextech v0.0.0-20250615151623-2a1cbb9455bc
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.32.0
-	www.github.com/mikogd/hextech v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -43,5 +43,3 @@ require (
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace www.github.com/mikogd/hextech => /Users/miko/workspace/library/go/hextech
